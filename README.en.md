@@ -14,13 +14,13 @@ A tool that overlays **Grad-CAM heatmaps** on each frame of a video, visualizing
 
 Left: original, Right: Grad-CAM heatmap overlay
 
-![sidebyside](sidebyside.png)
+![sidebyside](assets/sidebyside.png)
 
 ### triple
 
 Left: original, Center: raw heatmap, Right: overlay
 
-![triple](triple.png)
+![triple](assets/triple.png)
 
 ## Requirements
 
@@ -37,20 +37,20 @@ pip install torch torchvision opencv-python numpy tqdm
 
 ```bash
 # Basic
-python umwelt.py input.mp4
+python src/umwelt.py input.mp4
 
 # Customize layout, colormap, and alpha
-python umwelt.py input.mp4 -o output.mp4 \
+python src/umwelt.py input.mp4 -o output.mp4 \
     --layout triple \
     --alpha 0.6 \
     --colormap turbo \
     --top-k 5
 
 # Visualize attention for a specific class (e.g. ImageNet "cat" = 281)
-python umwelt.py input.mp4 --target-class 281 --layout sidebyside
+python src/umwelt.py input.mp4 --target-class 281 --layout sidebyside
 
 # Force CPU
-python umwelt.py input.mp4 --device cpu
+python src/umwelt.py input.mp4 --device cpu
 ```
 
 ### Options
@@ -71,7 +71,8 @@ python umwelt.py input.mp4 --device cpu
 ## Architecture
 
 ```
-umwelt.py          CLI & main loop
+src/
+├── umwelt.py      CLI & main loop
 ├── gradcam.py     Grad-CAM engine (ResNet50 layer4)
 ├── renderer.py    Heatmap rendering & layout compositing
 └── video_io.py    Video I/O (OpenCV)

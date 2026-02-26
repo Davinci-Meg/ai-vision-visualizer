@@ -14,13 +14,13 @@ CNNが動画の各フレームで「何を見ているか」を **Grad-CAM ヒ�
 
 左: 元映像、右: Grad-CAM ヒートマップオーバーレイ
 
-![sidebyside](sidebyside.png)
+![sidebyside](assets/sidebyside.png)
 
 ### triple
 
 左: 元映像、中: ヒートマップ単体、右: オーバーレイ
 
-![triple](triple.png)
+![triple](assets/triple.png)
 
 ## Requirements
 
@@ -37,20 +37,20 @@ pip install torch torchvision opencv-python numpy tqdm
 
 ```bash
 # 基本
-python umwelt.py input.mp4
+python src/umwelt.py input.mp4
 
 # レイアウト・カラーマップ・透明度をカスタマイズ
-python umwelt.py input.mp4 -o output.mp4 \
+python src/umwelt.py input.mp4 -o output.mp4 \
     --layout triple \
     --alpha 0.6 \
     --colormap turbo \
     --top-k 5
 
 # 特定クラスへの注目を可視化 (例: ImageNet "cat" = 281)
-python umwelt.py input.mp4 --target-class 281 --layout sidebyside
+python src/umwelt.py input.mp4 --target-class 281 --layout sidebyside
 
 # CPU を明示指定
-python umwelt.py input.mp4 --device cpu
+python src/umwelt.py input.mp4 --device cpu
 ```
 
 ### Options
@@ -71,7 +71,8 @@ python umwelt.py input.mp4 --device cpu
 ## Architecture
 
 ```
-umwelt.py          CLI・メインループ
+src/
+├── umwelt.py      CLI・メインループ
 ├── gradcam.py     Grad-CAM エンジン (ResNet50 layer4)
 ├── renderer.py    ヒートマップ描画・レイアウト合成
 └── video_io.py    動画 I/O (OpenCV)

@@ -6,4 +6,4 @@ dist/
 build/
 .env
 *.mp4
-!foreman.mp4
+!assets/foreman.mp4
