@@ -1,12 +1,22 @@
 # AI Vision Visualizer
 
-CNNが動画の各フレームで「何を見ているか」を **Grad-CAM ヒートマップ** としてオーバーレイし、動画として出力するツール。
+AI の「環世界（Umwelt）」を可視化するツール。動画の各フレームに対して **Grad-CAM ヒートマップ**、**物体検出**、**セマンティックセグメンテーション**、**深度推定** を実行し、AI が何を見ているかを直感的に理解できる映像を生成する。
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 > [English README](README.en.md)
+
+## Vision Modes
+
+| モード | モデル | 説明 |
+|--------|--------|------|
+| `gradcam` | ResNet50 (Grad-CAM) | CNN の注目領域をヒートマップで可視化 |
+| `detect` | YOLOv8 | 物体検出 + 5種 BBox スタイル |
+| `segment` | DeepLabV3 ResNet101 | セマンティックセグメンテーション + グリッチエフェクト |
+| `depth` | MiDaS DPT-Large | 単眼深度推定 + 4種深度表示 |
+| `all` | 上記4モデル同時 | 2x2 グリッドで全モードを同時表示 |
 
 ## Demo
 
@@ -30,80 +40,124 @@ CNNが動画の各フレームで「何を見ているか」を **Grad-CAM ヒ�
 ## Setup
 
 ```bash
-pip install torch torchvision opencv-python numpy tqdm
+# コア依存 (必須)
+pip install torch torchvision opencv-python numpy tqdm timm
+
+# 物体検出モード (--mode detect)
+pip install ultralytics
+
+# Depth Anything V2 (--mode depth --depth-model depth_anything)
+pip install transformers
 ```
 
 ## Usage
 
 ```bash
-# 基本
+# Grad-CAM (デフォルト、後方互換)
 python src/umwelt.py input.mp4
+python src/umwelt.py input.mp4 --layout triple --alpha 0.6 --colormap turbo
 
-# レイアウト・カラーマップ・透明度をカスタマイズ
-python src/umwelt.py input.mp4 -o output.mp4 \
-    --layout triple \
-    --alpha 0.6 \
-    --colormap turbo \
-    --top-k 5
+# 物体検出
+python src/umwelt.py input.mp4 --mode detect --bbox-style cyber
+python src/umwelt.py input.mp4 --mode detect --bbox-style hud --conf-threshold 0.5
 
-# 特定クラスへの注目を可視化 (例: ImageNet "cat" = 281)
-python src/umwelt.py input.mp4 --target-class 281 --layout sidebyside
+# セマンティックセグメンテーション
+python src/umwelt.py input.mp4 --mode segment --glitch-style mixed --glitch-intensity 0.8
 
-# CPU を明示指定
-python src/umwelt.py input.mp4 --device cpu
+# 深度推定
+python src/umwelt.py input.mp4 --mode depth --depth-style fog
+python src/umwelt.py input.mp4 --mode depth --depth-style 3d
+
+# 全モード同時表示 (2x2 グリッド)
+python src/umwelt.py input.mp4 --mode all
 ```
 
 ### Options
 
+#### 共通
+
 | Option | Default | Description |
 |--------|---------|-------------|
 | `input` | *(required)* | 入力動画ファイル |
-| `-o, --output` | `{input}_umwelt.mp4` | 出力ファイルパス |
+| `-o, --output` | `{input}_{mode}.mp4` | 出力ファイルパス |
+| `--mode` | `gradcam` | `gradcam` / `detect` / `segment` / `depth` / `all` |
+| `--device` | `auto` | `auto` / `cpu` / `cuda` |
+| `--no-audio` | `False` | 音声を含めない |
+
+#### Grad-CAM
+
+| Option | Default | Description |
+|--------|---------|-------------|
 | `--layout` | `overlay` | `overlay` / `sidebyside` / `triple` |
 | `--alpha` | `0.5` | ヒートマップ透明度 (0.0-1.0) |
 | `--colormap` | `jet` | カラーマップ (`jet`, `hot`, `inferno`, `turbo` 等) |
-| `--target-class` | auto | 対象クラス ID (0-999)。未指定時は最大確信度クラス |
+| `--target-class` | auto | 対象クラス ID (0-999) |
 | `--top-k` | `3` | 表示する予測クラス数 |
-| `--show-label` | `True` | クラス名・確信度の表示 |
-| `--device` | `auto` | `auto` / `cpu` / `cuda` |
-| `--no-audio` | `False` | 音声を含めない |
+
+#### Detection
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--bbox-style` | `default` | `default` / `corners` / `cyber` / `minimal` / `hud` |
+| `--yolo-model` | `yolov8n.pt` | YOLOv8 モデル名 |
+| `--conf-threshold` | `0.25` | 検出確信度の閾値 |
+
+#### Segmentation
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--glitch-style` | `mixed` | `rgb_shift` / `pixel_sort` / `scanline` / `displacement` / `mixed` |
+| `--glitch-intensity` | `0.5` | グリッチ強度 (0.0-1.0) |
+| `--seg-alpha` | `0.5` | セグメンテーションマスクの透明度 |
+
+#### Depth
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--depth-style` | `colormap` | `colormap` / `fog` / `contour` / `3d` |
+| `--depth-model` | `midas` | `midas` / `depth_anything` |
 
 ## Architecture
 
 ```
 src/
-├── umwelt.py      CLI・メインループ
-├── gradcam.py     Grad-CAM エンジン (ResNet50 layer4)
-├── renderer.py    ヒートマップ描画・レイアウト合成
-└── video_io.py    動画 I/O (OpenCV)
-```
-
-**処理フロー:**
-
-```
-入力動画 → フレーム読み込み → 前処理 (224x224) → ResNet50 推論
-    → Grad-CAM ヒートマップ生成 → カラーマップ変換 → 元フレームに合成
-    → テキスト描画 → 出力動画に書き出し
+├── umwelt.py              CLI・モード分岐・メインループ
+├── gradcam.py             Grad-CAM エンジン (ResNet50 layer4)
+├── detector.py            物体検出エンジン (YOLOv8)
+├── segmentor.py           セマンティックセグメンテーション (DeepLabV3)
+├── depth.py               深度推定エンジン (MiDaS / Depth Anything V2)
+├── renderer.py            描画・レイアウト合成
+├── video_io.py            動画 I/O (OpenCV)
+├── utils/
+│   ├── colors.py          カラーパレット・カラーマップ定義
+│   └── labels.py          クラスラベル辞書 (ImageNet/COCO/VOC)
+└── effects/
+    ├── bbox_styles.py     5種 BBox 描画スタイル
+    ├── glitch.py          5種グリッチエフェクト
+    └── depth_styles.py    4種深度表示スタイル
 ```
 
 ## Performance
 
-| Environment | Speed |
-|-------------|-------|
-| GPU (RTX 3060) | ~20-30 fps |
-| GPU (RTX 4090) | ~50-80 fps |
-| CPU (Core i7) | ~2-10 fps |
-
-推論は 224x224 固定のため、入力解像度にほぼ依存しない。
+| Mode | GPU (RTX 3060) | CPU (Core i7) |
+|------|---------------|---------------|
+| gradcam | ~25 fps | ~2-5 fps |
+| detect | ~45 fps | ~5-10 fps |
+| segment | ~9 fps | ~1-2 fps |
+| depth | ~12 fps | ~1-3 fps |
+| all | ~4 fps | <1 fps |
 
 ## Notes
 
-- モデルは **ResNet50** (ImageNet pretrained) 固定
-- Grad-CAM の対象層は **layer4** (最終畳み込みブロック、7x7 特徴マップ)
+- `--mode` 未指定時は `gradcam` がデフォルト（v1 との後方互換性を維持）
+- `ultralytics`, `transformers` は該当モード使用時のみインポート。未インストール時は `pip install` を案内
 - `ffmpeg` がインストール済みの場合、元動画の音声を自動的にコピーする
-- 出力コーデックは MP4 (mp4v)
+- `--mode all` は 4 モデルを同時ロード。VRAM が不足した場合は該当エンジンをスキップ
 
 ## References
 
 - Selvaraju, R.R. et al. (2017). *Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization.* ICCV 2017.
 - He, K. et al. (2016). *Deep Residual Learning for Image Recognition.* CVPR 2016.
+- Redmon, J. et al. — YOLOv8 (Ultralytics)
+- Chen, L.-C. et al. (2018). *Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation.* ECCV 2018.
+- Ranftl, R. et al. (2021). *Vision Transformers for Dense Prediction.* ICCV 2021. (MiDaS)
