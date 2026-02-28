@@ -1,0 +1,17 @@
+# AI Vision Visualizer — 依存ライブラリ
+
+# Core (必須)
+torch>=2.0
+torchvision>=0.15
+opencv-python>=4.8
+numpy>=1.24
+tqdm>=4.65
+
+# Detection mode (--mode detect)
+# ultralytics>=8.0        # pip install ultralytics
+
+# Depth mode (--mode depth, MiDaS)
+timm>=1.0
+
+# Depth mode (--mode depth --depth-model depth_anything)
+# transformers>=4.30      # pip install transformers

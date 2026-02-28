@@ -1,13 +1,12 @@
 """Grad-CAM エンジン — ResNet50 の layer4 を対象としたヒートマップ生成"""
 
-import json
-import urllib.request
-
 import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torchvision import models, transforms
+
+from utils.labels import get_imagenet_labels
 
 # ImageNet の前処理
 PREPROCESS = transforms.Compose([
@@ -17,27 +16,6 @@ PREPROCESS = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225]),
 ])
-
-# ImageNet ラベル（初回のみダウンロードしてキャッシュ）
-_LABELS_CACHE = None
-_LABELS_URL = (
-    "https://raw.githubusercontent.com/anishathalye/imagenet-simple-labels"
-    "/master/imagenet-simple-labels.json"
-)
-
-
-def get_imagenet_labels() -> list[str]:
-    """ImageNet 1000 クラスのラベルリストを取得する。"""
-    global _LABELS_CACHE
-    if _LABELS_CACHE is not None:
-        return _LABELS_CACHE
-    try:
-        with urllib.request.urlopen(_LABELS_URL, timeout=10) as resp:
-            _LABELS_CACHE = json.loads(resp.read().decode())
-    except Exception:
-        # フォールバック: クラスIDをそのまま文字列に
-        _LABELS_CACHE = [f"class_{i}" for i in range(1000)]
-    return _LABELS_CACHE
 
 
 class GradCAM:

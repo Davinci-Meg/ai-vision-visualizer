@@ -7,3 +7,5 @@ build/
 .env
 *.mp4
 !assets/foreman.mp4
+*.pt
+docs/
